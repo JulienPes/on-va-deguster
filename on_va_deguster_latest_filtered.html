@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>On va déguster – Dernier épisode valide</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 2rem auto; padding: 2rem; background: #fdfdfd; color: #333; }
+        h1 { color: #b30000; }
+        article { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ccc; }
+        .meta { color: #777; font-size: 0.9rem; margin-bottom: 0.8rem; }
+    </style>
+</head>
+<body>
+    <h1>On va déguster – Dernier épisode</h1>
+    <p>Cette page affiche automatiquement le **dernier épisode avec du contenu complet**. Parfait pour une intégration dans RSS.app.</p>
+
+    <div id="latest-episode">Chargement…</div>
+
+    <script>
+    async function loadLatestEpisode() {
+        const proxyUrl = "https://corsproxy.io/?";
+        const targetUrl = "https://ftr.fivefilters.net/makefulltextfeed.php?fulltext=1&url=https%3A%2F%2Frss.app%2Ffeeds%2FcDUlVump3cVuaROC.xml";
+        const url = proxyUrl + encodeURIComponent(targetUrl);
+
+        try {
+            const res = await fetch(url);
+            const text = await res.text();
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(text, "application/xml");
+            const items = xml.querySelectorAll("item");
+
+            let found = false;
+            for (let item of items) {
+                const content = item.getElementsByTagName("content:encoded")[0]?.textContent;
+                if (content && content.trim().length > 50) {
+                    const title = item.querySelector("title").textContent;
+                    const pubDate = item.querySelector("pubDate").textContent;
+
+                    const container = document.getElementById("latest-episode");
+                    container.innerHTML = `
+                        <article>
+                            <h2>${title}</h2>
+                            <div class="meta">${pubDate}</div>
+                            <div>${content}</div>
+                        </article>
+                    `;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                document.getElementById("latest-episode").innerHTML = "<p>Aucun épisode avec contenu disponible n'a été trouvé.</p>";
+            }
+        } catch (err) {
+            document.getElementById("latest-episode").innerHTML = "<p>Erreur lors du chargement de l'épisode.</p>";
+            console.error(err);
+        }
+    }
+
+    loadLatestEpisode();
+    </script>
+</body>
+</html>
