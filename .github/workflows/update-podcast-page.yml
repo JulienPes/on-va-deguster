@@ -1,5 +1,9 @@
 name: Générer page podcast
 
+# Nécessaire pour autoriser le push depuis le workflow
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '*/30 * * * *'
@@ -8,8 +12,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true  # pour que GITHUB_TOKEN soit utilisé pour les pushs
 
       - name: Installer Python3 et pip
         run: |
@@ -22,10 +30,13 @@ jobs:
       - name: Générer la page statique
         run: ./generate-podcast-page.py
 
+      - name: Copier vers index.html
+        run: cp rf_podcast_cleaned.html index.html
+
       - name: Commit et push la page
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add rf_podcast_cleaned.html
+          git add rf_podcast_cleaned.html index.html
           git commit -m "Mise à jour épisodes $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "Rien à committer"
           git push
