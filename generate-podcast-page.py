@@ -44,12 +44,23 @@ def build_html(episodes):
 
         block = soup.select_one("div.podcast-texte, article.podcast-content, main")
         if block:
+            # Supprimer les éléments non pertinents
             for sel in ["nav", "header", "footer", "aside", ".related", ".menu", ".breadcrumb", ".share", ".advert"]:
                 for tag in block.select(sel):
                     tag.decompose()
+
+            # Supprimer les scripts et styles
+            for tag in block(["script", "style"]):
+                tag.decompose()
+
+            # Supprimer les éléments vides ou suspects
             for tag in block.find_all():
-                if not (tag.get_text(strip=True) or tag.find("img") or tag.find("audio")):
+                text = tag.get_text(strip=True)
+                if not (text or tag.find("img") or tag.find("audio")):
                     tag.decompose()
+                if "window._nli" in text or text.startswith("L'équipe") or "Production window" in text:
+                    tag.decompose()
+
             content = str(block)
         else:
             content = f"<p><em>Résumé :</em> {e.summary}</p>"
