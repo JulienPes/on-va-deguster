@@ -1,0 +1,31 @@
+name: Générer page podcast
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Installer Python3 et pip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+
+      - name: Installer dépendances Python
+        run: pip3 install feedparser beautifulsoup4 requests
+
+      - name: Générer la page statique
+        run: ./generate-podcast-page.py
+
+      - name: Commit et push la page
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rf_podcast_cleaned.html
+          git commit -m "Mise à jour épisodes $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "Rien à committer"
+          git push
