@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>On va déguster – Épisodes épurés du même jour</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:800px; margin:2rem auto; padding:1rem; background:#fafafa; color:#333; }
+    h1 { color:#b30000; margin-bottom:1rem; }
+    .episode { margin-bottom:2rem; padding:1rem; background:#fff; border:1px solid #ddd; border-radius:6px; }
+    .episode h2 { margin:0 0 0.5rem; font-size:1.2rem; }
+    .date { color:#555; font-size:0.9rem; margin-bottom:0.5rem; }
+    .label { font-weight:bold; margin-top:1rem; }
+    .content { margin-top:0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>On va déguster – Épisodes épurés du même jour</h1>
+  <div id="episodes">Chargement des épisodes...</div>
+
+  <script>
+    async function fetchFeed() {
+      const url = "https://api.rss2json.com/v1/api.json?rss_url=" +
+        encodeURIComponent("https://radiofrance-podcast.net/podcast09/rss_11370.xml");
+      const res = await fetch(url);
+      return await res.json();
+    }
+
+    async function fetchEpisodeContent(link) {
+      const proxy = "https://api.allorigins.win/raw?url=";
+      const res = await fetch(proxy + encodeURIComponent(link));
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      // Select the main content
+      let el = doc.querySelector("div.podcast-texte") 
+            || doc.querySelector("article.podcast-content")
+            || doc.querySelector("main");
+      if (!el) return "<p>Contenu non trouvé.</p>";
+      // Remove non-pertinent elements
+      const unwanted = el.querySelectorAll("nav, header, footer, .related, .menu, .breadcrumb, .share, .advert, aside");
+      unwanted.forEach(node => node.remove());
+      // Optionally remove empty elements
+      el.querySelectorAll("*").forEach(child => {
+        if (!child.textContent.trim() && !child.querySelector("img, p")) {
+          child.remove();
+        }
+      });
+      return el.innerHTML;
+    }
+
+    (async function() {
+      const container = document.getElementById("episodes");
+      try {
+        const data = await fetchFeed();
+        if (data.status !== "ok" || !data.items.length) {
+          container.innerHTML = "<p>Aucun épisode disponible.</p>";
+          return;
+        }
+        // Determine most recent date
+        let maxTime = 0;
+        data.items.forEach(item => {
+          const t = new Date(item.pubDate).getTime();
+          if (t > maxTime) maxTime = t;
+        });
+        const recentItems = data.items.filter(item => {
+          return new Date(item.pubDate).toDateString() === new Date(maxTime).toDateString();
+        });
+        container.innerHTML = "";
+        for (const item of recentItems) {
+          const d = new Date(item.pubDate);
+          const displayDate = d.toLocaleDateString("fr-FR", { day:"numeric", month:"long" });
+          const epDiv = document.createElement("div");
+          epDiv.className = "episode";
+          epDiv.innerHTML = `
+            <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
+            <div class="date">${displayDate}</div>
+            <div class="label">Article affiché:</div>
+            <div class="content">Chargement du contenu...</div>
+          `;
+          container.appendChild(epDiv);
+          const contentHtml = await fetchEpisodeContent(item.link);
+          epDiv.querySelector(".content").innerHTML = contentHtml;
+        }
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p>Erreur de chargement des épisodes.</p>";
+      }
+    })();
+  </script>
+</body>
+</html>
